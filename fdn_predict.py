@@ -200,7 +200,7 @@ if __name__ == "__main__":
     # else:
     #     kernel = np.loadtxt(args.kernel).astype(np.float32)
     # load models
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     K.clear_session()
     log("Processing stages 01-%02d" % n_stages)
     log("- creating models and loading weights")
