@@ -249,26 +249,35 @@ if __name__ == "__main__":
         kernel /= np.sum(kernel)
         assert 2 <= img.ndim <= 3
         assert kernel.ndim == 2 and all([d % 2 == 1 for d in kernel.shape])
-        if img.ndim == 3:
-            print(
-                "Warning: Applying grayscale deconvolution model to each channel of input image separately.",
-                file=sys.stderr,
-            )
         # prepare for prediction
-        log("Preparing inputs")
         y = to_tensor(edgetaper(pad_for_kernel(img, kernel, "edge"), kernel))
         k = np.tile(kernel[np.newaxis], (y.shape[0], 1, 1))
         s = np.tile(args.sigma, (y.shape[0], 1)).astype(np.float32)
         x0 = y
 
         # predict
-        log("- predicting")
         pred = m.predict_on_batch([x0, y, k, s])
         if n_stages == 1:
             pred = [pred]
 
         # save or show
-        result = crop_for_kernel(from_tensor(pred[n_stages - 1]), kernel)
+        # result = crop_for_kernel(from_tensor(pred[n_stages - 1]), kernel)
+        a = from_tensor(pred[n_stages - 1])
+        gt = crop_for_kernel(gt, kernel)
+        img = crop_for_kernel(img, kernel)
+        hh, ww = a.shape
+        h, w = gt.shape
+        psnr = result = top = left = 0
+        for t in range(hh - h):
+            for l in range(ww - w):
+                r = a[t : t + h, l : l + w]
+                p = compare_psnr(gt, r)
+                if p > psnr:
+                    left = l
+                    top = t
+                    psnr = p
+                    result = r
+
         # result = result.clip(0, 1)
         # gt = gt.clip(0, 1)
         # result /= result.sum()
@@ -278,12 +287,13 @@ if __name__ == "__main__":
         # gt = crop_for_kernel(gt, kernel)
         # img = crop_for_kernel(img, kernel)
         # result = crop_for_kernel(result, kernel)
-        psnr = compare_psnr(gt, result)
+        # psnr = compare_psnr(gt, result)
         # psnr = (gt - result) ** 2
         # psnr = np.mean(psnr)
         # psnr = -10* np.log10(psnr)
         psnrs.append(psnr)
-        print(f'{psnr:.2f}')
+        print(f"{psnr:.2f}", top, left, hh,ww, h,w, *kernel.shape)
         # show(np.concatenate((img, gt, result), 1))
-    print("psnr avg:", f'{np.mean(psnrs):.2f}')
-    print("psnr max:", f'{np.max(psnrs):.2f}')
+    print("psnr avg:", f"{np.mean(psnrs):.2f}")
+    print("psnr max:", f"{np.max(psnrs):.2f}")
+
